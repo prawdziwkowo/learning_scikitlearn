@@ -17,6 +17,9 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 
+import tensorflow as tf
+import tempfile
+
 ## wczytanie danych do jednego zbioru, ponieważ przekształcenia takie same
 data = pd.concat([pd.read_csv('titanic_train.csv'), pd.read_csv('titanic_test.csv')])
 
@@ -101,6 +104,7 @@ data = data.set_index('PassengerId')
 ##Podzielenie na zbiór uczący i testowy
 X_train = data[pd.notnull(data['Survived'])]
 y_train = data[pd.notnull(data['Survived'])]['Survived'].values
+y_train_tf = data[pd.notnull(data['Survived'])]['Survived']
 X_train = X_train.drop(['Survived'], axis = 1)
 
 X_test = data[pd.isnull(data['Survived'])]
@@ -160,3 +164,51 @@ parameters = {
 }
 
 learn_and_save(classifier, X_train, y_train, X_test, parameters, 'rfc_predict.csv')
+# X_train['Embarked'] = X_train['Embarked'].values.astype('str')
+
+
+
+##Tensorflow DNN
+age = tf.feature_column.numeric_column("Age")
+fare = tf.feature_column.numeric_column("Fare")
+family_size = tf.feature_column.numeric_column("FamilySize")
+
+embarked = tf.feature_column.categorical_column_with_hash_bucket("Embarked", hash_bucket_size=1000)
+floor = tf.feature_column.categorical_column_with_hash_bucket("Floor", hash_bucket_size=1000)
+title = tf.feature_column.categorical_column_with_hash_bucket("Title", hash_bucket_size=1000)
+sex = tf.feature_column.categorical_column_with_hash_bucket("Sex", hash_bucket_size=1000)
+pclass = tf.feature_column.categorical_column_with_hash_bucket("Pclass", hash_bucket_size=1000)
+
+columns_to_learn = [
+    age,
+    # fare,
+    # family_size,
+    # tf.feature_column.embedding_column(embarked, dimension=8),
+    # tf.feature_column.indicator_column(floor),
+    # tf.feature_column.indicator_column(title),
+    # tf.feature_column.indicator_column(sex),
+    # tf.feature_column.indicator_column(pclass),
+]
+
+train_steps = 2000
+
+model_dir = tempfile.mkdtemp()
+
+
+input_fn_titanic =  tf.estimator.inputs.pandas_input_fn(
+    x=X_train,
+    y=y_train_tf,
+    batch_size=100,
+    num_epochs=None,
+    shuffle=True,
+    num_threads=5)
+
+
+m = tf.estimator.DNNClassifier(
+    model_dir=model_dir,
+    feature_columns=columns_to_learn,
+    hidden_units=[100, 50])
+
+m.train(
+    input_fn=input_fn_titanic,
+    steps=train_steps)

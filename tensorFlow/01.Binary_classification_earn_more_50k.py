@@ -162,3 +162,11 @@ model_dir = ""
 
 
 train_and_eval(model_dir, model_type, train_steps)
+
+## Uczenie liniowo DNN
+model_type = "wide-n-deep"
+train_steps = 2000
+model_dir = ""
+
+
+train_and_eval(model_dir, model_type, train_steps)
